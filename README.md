@@ -135,7 +135,6 @@ open dashboard/index.html
 
 - 💼 [LinkedIn](https://www.linkedin.com/in/rushikesh-desai-6813102a4/)
 - 💻 [GitHub](https://github.com/rushikeshdesai22)
-- 📧 [rushikeshdesai2022@gmail.com](mailto:rushikeshdesai2022@gmail.com)
 - 📍 Navi Mumbai, India
 
 ---
