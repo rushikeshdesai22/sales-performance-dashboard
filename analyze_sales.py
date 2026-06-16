@@ -2,10 +2,6 @@
 =============================================================
   Sales Performance Dashboard - Data Analysis Script
   Author  : Rushikesh Desai
-  Email   : rushikeshdesai2022@gmail.com
-  GitHub  : https://github.com/rushikeshdesai22
-  LinkedIn: https://www.linkedin.com/in/rushikesh-desai-6813102a4/
-  College : SSIEMS (DBATU Lonere), Parbhani
   Tools   : Python, Pandas, NumPy
 =============================================================
   Description:
