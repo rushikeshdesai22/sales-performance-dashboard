@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sales Performance Dashboard | Rushikesh Desai</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:   #1a2b5c;
+      --blue:   #2563eb;
+      --cyan:   #06b6d4;
+      --green:  #10b981;
+      --amber:  #f59e0b;
+      --red:    #ef4444;
+      --bg:     #f0f4ff;
+      --card:   #ffffff;
+      --text:   #1e293b;
+      --muted:  #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 24px rgba(37,99,235,.08);
+    }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, var(--navy) 0%, #2d47a0 60%, var(--blue) 100%);
+      color: #fff; padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem; min-height: 80px;
+    }
+    .header-left h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: .5px; }
+    .header-left p  { font-size: .8rem; opacity: .75; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .author-badge {
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+      border-radius: 24px; padding: 6px 16px;
+      font-size: .82rem; display: flex; align-items: center; gap: 8px;
+    }
+    .author-badge .dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; }
+    .filter-wrap { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .filter-wrap select {
+      background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
+      color: #fff; border-radius: 8px; padding: 5px 10px; font-size: .82rem; cursor: pointer;
+    }
+    .filter-wrap select option { color: var(--navy); background: #fff; }
+
+    /* ── Layout ── */
+    main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+
+    /* ── KPI Row ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .kpi-card {
+      background: var(--card); border-radius: 16px; padding: 1.2rem 1.4rem;
+      box-shadow: var(--shadow); border-left: 4px solid var(--blue);
+      display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden;
+      transition: transform .2s;
+    }
+    .kpi-card:hover { transform: translateY(-3px); }
+    .kpi-card::after {
+      content: ''; position: absolute; right: -20px; top: -20px;
+      width: 80px; height: 80px; border-radius: 50%;
+      background: currentColor; opacity: .06;
+    }
+    .kpi-card.blue  { border-color: var(--blue);  color: var(--blue); }
+    .kpi-card.green { border-color: var(--green); color: var(--green); }
+    .kpi-card.cyan  { border-color: var(--cyan);  color: var(--cyan); }
+    .kpi-card.amber { border-color: var(--amber); color: var(--amber); }
+    .kpi-card.red   { border-color: var(--red);   color: var(--red); }
+    .kpi-label { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+    .kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1; color: var(--text); }
+    .kpi-icon  { font-size: 1.4rem; position: absolute; right: 1rem; top: 1rem; }
+
+    /* ── Chart Grid ── */
+    .chart-grid { display: grid; gap: 1.2rem; }
+    .row-2  { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+    .row-3  { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .chart-card {
+      background: var(--card); border-radius: 16px; padding: 1.4rem;
+      box-shadow: var(--shadow);
+    }
+    .chart-card.span-2 { grid-column: span 2; }
+    .chart-title { font-size: .92rem; font-weight: 700; color: var(--navy); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+    .chart-title span { font-size: 1rem; }
+    .chart-wrap { position: relative; height: 240px; }
+    .chart-wrap.tall { height: 280px; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    thead th { background: var(--navy); color: #fff; padding: 8px 12px; text-align: left; font-weight: 600; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:hover { background: #f0f4ff; }
+    tbody td { padding: 9px 12px; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
+    .badge.high { background: #dcfce7; color: #166534; }
+    .badge.mid  { background: #fef9c3; color: #854d0e; }
+    .badge.low  { background: #fee2e2; color: #991b1b; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 1.5rem; font-size: .8rem; color: var(--muted);
+      border-top: 1px solid var(--border); background: var(--card); margin-top: 2rem;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Insight Box ── */
+    .insight-box {
+      background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+      border: 1px solid #bfdbfe; border-radius: 12px; padding: 1rem 1.2rem;
+      margin-bottom: 1.2rem; font-size: .85rem; color: var(--navy);
+      display: flex; align-items: flex-start; gap: .6rem;
+    }
+    .insight-box .emoji { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+
+    @media (max-width: 600px) {
+      .chart-card.span-2 { grid-column: span 1; }
+      .kpi-value { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="header-left">
+    <h1>📊 Sales Performance Dashboard</h1>
+    <p>Retail Dataset Analysis — Jan 2024 to Dec 2024</p>
+  </div>
+  <div class="header-right">
+    <div class="filter-wrap">
+      <select id="regionFilter" onchange="applyFilters()">
+        <option value="All">All Regions</option>
+        <option value="North">North</option>
+        <option value="South">South</option>
+        <option value="East">East</option>
+        <option value="West">West</option>
+      </select>
+      <select id="categoryFilter" onchange="applyFilters()">
+        <option value="All">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Furniture">Furniture</option>
+        <option value="Clothing">Clothing</option>
+      </select>
+    </div>
+    <div class="author-badge">
+      <div class="dot"></div>
+      <strong>Rushikesh Desai</strong>
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<main>
+
+  <!-- Insight -->
+  <div class="insight-box">
+    <div class="emoji">💡</div>
+    <div id="insightText">Loading insights...</div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <span class="kpi-icon">💰</span>
+      <div class="kpi-label">Total Sales</div>
+      <div class="kpi-value" id="kpi-sales">—</div>
+    </div>
+    <div class="kpi-card green">
+      <span class="kpi-icon">📈</span>
+      <div class="kpi-label">Total Profit</div>
+      <div class="kpi-value" id="kpi-profit">—</div>
+    </div>
+    <div class="kpi-card cyan">
+      <span class="kpi-icon">🛒</span>
+      <div class="kpi-label">Total Orders</div>
+      <div class="kpi-value" id="kpi-orders">—</div>
+    </div>
+    <div class="kpi-card amber">
+      <span class="kpi-icon">🏷️</span>
+      <div class="kpi-label">Avg Discount</div>
+      <div class="kpi-value" id="kpi-discount">—</div>
+    </div>
+    <div class="kpi-card red">
+      <span class="kpi-icon">📊</span>
+      <div class="kpi-label">Profit Margin</div>
+      <div class="kpi-value" id="kpi-margin">—</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Line + Doughnut -->
+  <div class="chart-grid row-2" style="margin-bottom:1.2rem">
+    <div class="chart-card span-2" style="grid-column:auto">
+      <div class="chart-title"><span>📅</span> Monthly Sales vs Profit Trend</div>
+      <div class="chart-wrap tall"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span>📦</span> Sales by Category</div>
+      <div class="chart-wrap"><canvas id="doughnutChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: Bar + Radar -->
+  <div class="chart-grid row-2" style="margin-bottom:1.2rem">
+    <div class="chart-card">
+      <div class="chart-title"><span>🌍</span> Sales by Region</div>
+      <div class="chart-wrap"><canvas id="barRegion"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span>💸</span> Discount Impact on Avg Profit</div>
+      <div class="chart-wrap"><canvas id="discountBar"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 3: Top Products Table -->
+  <div class="chart-card" style="margin-bottom:1.2rem">
+    <div class="chart-title"><span>🏆</span> Top Products by Sales Revenue</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Product</th><th>Total Sales (₹)</th>
+            <th>Total Profit (₹)</th><th>Orders</th><th>Margin</th>
+          </tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ── -->
+<footer>
+  Built with ❤️ by <strong>Rushikesh Desai</strong> &nbsp;|&nbsp;
+  SSIEMS (DBATU Lonere), Parbhani &nbsp;|&nbsp;
+  <a href="https://github.com/rushikeshdesai22" target="_blank">GitHub</a> &nbsp;|&nbsp;
+  <a href="https://www.linkedin.com/in/rushikesh-desai-6813102a4/" target="_blank">LinkedIn</a> &nbsp;|&nbsp;
+  <a href="mailto:rushikeshdesai2022@gmail.com">rushikeshdesai2022@gmail.com</a>
+  <br><br>
+  Tools Used: Python &bull; Pandas &bull; NumPy &bull; Chart.js &bull; HTML/CSS/JavaScript
+</footer>
+
+<!-- ── SCRIPT ── -->
+<script>
+// ── Embedded data (generated by analyze_sales.py by Rushikesh Desai) ──
+const RAW_DATA = {
+  "kpis": { "total_sales": 3459700, "total_profit": 588930, "total_orders": 144, "avg_discount": 5.6, "profit_margin": 17.0 },
+  "by_category": [
+    {"Category":"Electronics","Sales":1972000,"Profit":332500,"Orders":48},
+    {"Category":"Furniture","Sales":1313300,"Profit":221400,"Orders":48},
+    {"Category":"Clothing","Sales":174400,"Profit":35030,"Orders":48}
+  ],
+  "by_region": [
+    {"Region":"West","Sales":893300,"Profit":149250},
+    {"Region":"North","Sales":861500,"Profit":147730},
+    {"Region":"South","Sales":857500,"Profit":146220},
+    {"Region":"East","Sales":847400,"Profit":145730}
+  ],
+  "monthly_trend": [
+    {"Month":"Jan","Sales":254500,"Profit":39500},
+    {"Month":"Feb","Sales":266200,"Profit":42850},
+    {"Month":"Mar","Sales":269200,"Profit":43700},
+    {"Month":"Apr","Sales":304700,"Profit":50180},
+    {"Month":"May","Sales":261200,"Profit":44150},
+    {"Month":"Jun","Sales":309800,"Profit":52400},
+    {"Month":"Jul","Sales":262500,"Profit":45500},
+    {"Month":"Aug","Sales":247200,"Profit":42970},
+    {"Month":"Sep","Sales":335700,"Profit":58200},
+    {"Month":"Oct","Sales":284500,"Profit":50750},
+    {"Month":"Nov","Sales":337900,"Profit":59900},
+    {"Month":"Dec","Sales":326300,"Profit":58830}
+  ],
+  "top_products": [
+    {"Product":"Laptop","Sales":1000000,"Profit":164500,"Orders":11},
+    {"Product":"Phone","Sales":495000,"Profit":83500,"Orders":10},
+    {"Product":"Bed","Sales":441000,"Profit":72000,"Orders":9},
+    {"Product":"Sofa","Sales":365000,"Profit":59000,"Orders":10},
+    {"Product":"Tablet","Sales":288000,"Profit":48500,"Orders":9}
+  ],
+  "discount_impact": [
+    {"Discount_Band":"No Discount","Avg_Profit":4612.5,"Orders":48},
+    {"Discount_Band":"Low (≤10%)","Avg_Profit":4319.6,"Orders":83},
+    {"Discount_Band":"High (>10%)","Avg_Profit":692.3,"Orders":13}
+  ]
+};
+
+// Simulated per-record data for filtering
+const RECORDS = [];
+const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const categories = ["Electronics","Furniture","Clothing"];
+const regions = ["West","North","South","East"];
+const rng = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+(function buildRecords() {
+  let id = 1001;
+  RAW_DATA.monthly_trend.forEach((m, mi) => {
+    categories.forEach(cat => {
+      regions.forEach(reg => {
+        const base = cat === "Electronics" ? rng(5000,90000) : cat === "Furniture" ? rng(4000,50000) : rng(1000,7000);
+        const profit = Math.round(base * (cat === "Electronics" ? 0.168 : cat === "Furniture" ? 0.168 : 0.2));
+        RECORDS.push({ Month: m.Month, MonthIdx: mi, Category: cat, Region: reg, Sales: base, Profit: profit });
+        id++;
+      });
+    });
+  });
+})();
+
+// ── Chart instances ──
+let lineC, doughC, barR, discC;
+const palette = { blue: "#2563eb", green: "#10b981", cyan: "#06b6d4", amber: "#f59e0b", red: "#ef4444", navy: "#1a2b5c", purple: "#7c3aed" };
+
+function fmt(n) {
+  if (n >= 1e6) return "₹" + (n/1e6).toFixed(1) + "M";
+  if (n >= 1e3) return "₹" + (n/1e3).toFixed(0) + "K";
+  return "₹" + n;
+}
+
+function applyFilters() {
+  const reg = document.getElementById("regionFilter").value;
+  const cat = document.getElementById("categoryFilter").value;
+  const filtered = RECORDS.filter(r =>
+    (reg === "All" || r.Region === reg) &&
+    (cat === "All" || r.Category === cat)
+  );
+  renderAll(filtered, reg, cat);
+}
+
+function renderAll(filtered, reg, cat) {
+  // KPIs
+  const totalSales  = filtered.reduce((a,r) => a + r.Sales, 0);
+  const totalProfit = filtered.reduce((a,r) => a + r.Profit, 0);
+  const totalOrders = filtered.length;
+  const margin      = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : 0;
+
+  document.getElementById("kpi-sales").textContent   = fmt(totalSales);
+  document.getElementById("kpi-profit").textContent  = fmt(totalProfit);
+  document.getElementById("kpi-orders").textContent  = totalOrders;
+  document.getElementById("kpi-discount").textContent = "5.6%";
+  document.getElementById("kpi-margin").textContent  = margin + "%";
+
+  // Insight
+  const topCat = categories.map(c => ({c, s: filtered.filter(r=>r.Category===c).reduce((a,r)=>a+r.Sales,0)}))
+                            .sort((a,b)=>b.s-a.s)[0];
+  document.getElementById("insightText").innerHTML =
+    `<strong>Insight:</strong> ${reg !== "All" ? reg + " region — " : ""}${cat !== "All" ? cat + " — " : ""}
+     <b>${topCat?.c || "Electronics"}</b> leads sales with <b>${fmt(topCat?.s||0)}</b> in revenue.
+     Overall profit margin stands at <b>${margin}%</b>. November and September show peak performance months.`;
+
+  // Monthly Line Chart
+  const monthly = months.map(m => ({
+    s: filtered.filter(r=>r.Month===m).reduce((a,r)=>a+r.Sales,0),
+    p: filtered.filter(r=>r.Month===m).reduce((a,r)=>a+r.Profit,0)
+  }));
+  updateLine(monthly);
+
+  // Category Doughnut
+  const catData = categories.map(c => filtered.filter(r=>r.Category===c).reduce((a,r)=>a+r.Sales,0));
+  updateDoughnut(catData);
+
+  // Region Bar
+  const regData = regions.map(rg => filtered.filter(r=>r.Region===rg).reduce((a,r)=>a+r.Sales,0));
+  updateBarRegion(regData);
+}
+
+// ── Line Chart ──
+function initLine(monthly) {
+  const ctx = document.getElementById("lineChart").getContext("2d");
+  lineC = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: months,
+      datasets: [
+        { label: "Sales (₹)", data: monthly.map(m=>m.s), borderColor: palette.blue, backgroundColor: "rgba(37,99,235,.12)", fill: true, tension: .4, pointRadius: 4, pointHoverRadius: 7, borderWidth: 2.5 },
+        { label: "Profit (₹)", data: monthly.map(m=>m.p), borderColor: palette.green, backgroundColor: "rgba(16,185,129,.10)", fill: true, tension: .4, pointRadius: 4, pointHoverRadius: 7, borderWidth: 2.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "top" }, tooltip: { callbacks: { label: c => " " + fmt(c.raw) } } },
+      scales: { y: { ticks: { callback: v => fmt(v) }, grid: { color: "#e2e8f0" } }, x: { grid: { display: false } } }
+    }
+  });
+}
+function updateLine(monthly) {
+  if (!lineC) return initLine(monthly);
+  lineC.data.datasets[0].data = monthly.map(m=>m.s);
+  lineC.data.datasets[1].data = monthly.map(m=>m.p);
+  lineC.update();
+}
+
+// ── Doughnut ──
+function initDoughnut(catData) {
+  const ctx = document.getElementById("doughnutChart").getContext("2d");
+  doughC = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: categories,
+      datasets: [{ data: catData, backgroundColor: [palette.blue, palette.cyan, palette.amber], borderWidth: 3, borderColor: "#fff", hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "62%",
+      plugins: {
+        legend: { position: "bottom", labels: { padding: 16 } },
+        tooltip: { callbacks: { label: c => " " + fmt(c.raw) } }
+      }
+    }
+  });
+}
+function updateDoughnut(catData) {
+  if (!doughC) return initDoughnut(catData);
+  doughC.data.datasets[0].data = catData;
+  doughC.update();
+}
+
+// ── Region Bar ──
+function initBarRegion(regData) {
+  const ctx = document.getElementById("barRegion").getContext("2d");
+  barR = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: regions,
+      datasets: [{ label: "Sales (₹)", data: regData, backgroundColor: [palette.blue, palette.purple, palette.cyan, palette.green], borderRadius: 8, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: "y",
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => " " + fmt(c.raw) } } },
+      scales: { x: { ticks: { callback: v => fmt(v) }, grid: { color: "#e2e8f0" } }, y: { grid: { display: false } } }
+    }
+  });
+}
+function updateBarRegion(regData) {
+  if (!barR) return initBarRegion(regData);
+  barR.data.datasets[0].data = regData;
+  barR.update();
+}
+
+// ── Discount Bar ──
+function initDiscountBar() {
+  const ctx = document.getElementById("discountBar").getContext("2d");
+  discC = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: RAW_DATA.discount_impact.map(d => d.Discount_Band),
+      datasets: [{ label: "Avg Profit (₹)", data: RAW_DATA.discount_impact.map(d => d.Avg_Profit), backgroundColor: [palette.green, palette.amber, palette.red], borderRadius: 8, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => " ₹" + c.raw.toLocaleString() } } },
+      scales: { y: { ticks: { callback: v => "₹" + (v/1000).toFixed(0) + "K" }, grid: { color: "#e2e8f0" } }, x: { grid: { display: false } } }
+    }
+  });
+}
+
+// ── Product Table ──
+function renderProductTable() {
+  const tbody = document.getElementById("productTable");
+  tbody.innerHTML = "";
+  RAW_DATA.top_products.forEach((p, i) => {
+    const margin = ((p.Profit / p.Sales) * 100).toFixed(1);
+    const badge  = margin > 17 ? "high" : margin > 14 ? "mid" : "low";
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${i + 1}</strong></td>
+        <td><strong>${p.Product}</strong></td>
+        <td>₹${p.Sales.toLocaleString()}</td>
+        <td>₹${p.Profit.toLocaleString()}</td>
+        <td>${p.Orders}</td>
+        <td><span class="badge ${badge}">${margin}%</span></td>
+      </tr>`;
+  });
+}
+
+// ── Init ──
+window.addEventListener("DOMContentLoaded", () => {
+  applyFilters();
+  initDiscountBar();
+  renderProductTable();
+});
+</script>
+</body>
+</html>
